@@ -1,0 +1,26 @@
+{
+  "records": 427,
+  "spam": 156,
+  "ham": 271,
+  "features": 683,
+  "models": {
+    "Logistic Regression": {
+      "accuracy": 100.0,
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1": 100.0
+    },
+    "Naive Bayes": {
+      "accuracy": 98.84,
+      "precision": 96.88,
+      "recall": 100.0,
+      "f1": 98.41
+    },
+    "SVM": {
+      "accuracy": 100.0,
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1": 100.0
+    }
+  }
+}

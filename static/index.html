@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spam Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0f0a26; --plum:#1d1450; --edge:#3a2c86; --gold:#e0bb62; --gold-dim:#a98a3f;
+  --cream:#f4ecd8; --mute:#a9a1c9; --bad:#ef6a62; --good:#74d8b4;
+  --serif:"Cormorant Garamond",Georgia,serif; --sans:"Source Sans 3",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  min-height:100vh; color:var(--cream); font:17px/1.55 var(--sans);
+  background:radial-gradient(1200px 600px at 50% -10%,var(--plum),var(--night) 70%) fixed;
+  padding:48px 20px 64px;
+}
+main{max-width:720px;margin:0 auto}
+header{text-align:center;margin-bottom:36px}
+.crown{width:54px;height:54px;color:var(--gold)}
+h1{font:600 clamp(40px,8vw,60px)/1.05 var(--serif);margin:10px 0 8px;color:var(--gold);letter-spacing:.01em}
+.sub{color:var(--mute);margin:0 auto;max-width:34em}
+.rule{height:1px;width:240px;margin:20px auto 12px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+.stat{color:var(--mute);font-size:15px}
+label.field{display:block;font:600 22px var(--serif);margin-bottom:8px}
+.box{position:relative}
+textarea{
+  width:100%;min-height:170px;resize:vertical;padding:14px 16px;border-radius:10px;
+  background:rgba(15,10,38,.7);color:var(--cream);border:1px solid var(--edge);font:inherit;
+}
+textarea::placeholder{color:#7d75a6}
+.box.drag textarea{border-color:var(--gold);background:rgba(224,187,98,.08)}
+.hint{font-size:14px;color:var(--mute);margin:6px 0 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+button,.filebtn{
+  font:600 16px var(--sans);border-radius:8px;padding:10px 18px;cursor:pointer;
+  border:1px solid var(--gold-dim);background:transparent;color:var(--gold);
+}
+button.primary{background:linear-gradient(180deg,#ecca78,#c9a248);color:#2a1e00;border-color:#c9a248}
+button:disabled{opacity:.55;cursor:wait}
+button:hover:not(:disabled),.filebtn:hover{filter:brightness(1.1)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font-size:14px;padding:5px 12px;border-radius:999px;border-color:var(--edge);color:var(--mute)}
+.counter{margin-left:auto;color:var(--mute);font-size:15px}
+#result{
+  margin-top:28px;padding:22px 24px;border-radius:12px;border:1px solid var(--edge);
+  background:rgba(29,20,80,.55);display:none;
+}
+#result.show{display:block;animation:rise .35s ease-out}
+#result.spam{border-color:var(--bad)} #result.ham{border-color:var(--good)}
+.verdict{font:700 clamp(30px,6vw,40px)/1.1 var(--serif);margin:0}
+.spam .verdict{color:var(--bad)} .ham .verdict{color:var(--good)}
+.explain{color:var(--mute);margin:4px 0 16px}
+.meter{height:12px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.meter i{display:block;height:100%;width:0;border-radius:99px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.spam .meter i{background:var(--bad)} .ham .meter i{background:var(--good)}
+.meta{display:flex;justify-content:space-between;margin-top:8px;font-size:15px;color:var(--mute)}
+.err{color:var(--bad);margin-top:14px;display:none}
+section.models{margin-top:40px}
+h2{font:600 24px var(--serif);margin:0 0 10px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mute);font-weight:600}
+td.serve{color:var(--gold)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#result.show{animation:none}.meter i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg class="crown" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><path d="M8 48 4 20l15 14 13-22 13 22 15-14-4 28z"/><rect x="8" y="51" width="48" height="6" rx="2"/></svg>
+    <h1>Spam Shield</h1>
+    <p class="sub">Paste an email or text message and get a spam or safe verdict, with the model's confidence.</p>
+    <div class="rule"></div>
+    <div class="stat" id="trained">Loading model details…</div>
+  </header>
+
+  <label class="field" for="msg">Paste an email or SMS to inspect</label>
+  <div class="box" id="box">
+    <textarea id="msg" placeholder="Type or paste a message here, or drop a .txt or .eml file onto this box."></textarea>
+  </div>
+  <p class="hint">Drag and drop a .txt or .eml file, or choose one below.</p>
+
+  <div class="row">
+    <button class="primary" id="check">Check message</button>
+    <label class="filebtn" tabindex="0" id="filelabel">Upload file<input type="file" id="file" accept=".txt,.eml" hidden></label>
+    <button id="clear">Clear</button>
+    <span class="counter" id="count">0 messages checked</span>
+  </div>
+
+  <div class="chips" aria-label="Sample messages">
+    <button class="chip" data-s="Congratulations you won a free lottery prize click here to claim now">Try a prize scam</button>
+    <button class="chip" data-s="Your bank account has been suspended. Verify your details immediately at www.secure-bank-verify.com or face permanent closure.">Try a bank alert</button>
+    <button class="chip" data-s="Hey John are we still meeting for lunch tomorrow at noon in office">Try a normal message</button>
+    <button class="chip" data-s="Attached please find the quarterly financial report and review notes">Try a work email</button>
+  </div>
+
+  <div class="err" id="err" role="alert"></div>
+
+  <div id="result" aria-live="polite">
+    <p class="verdict" id="verdict"></p>
+    <p class="explain" id="explain"></p>
+    <div class="meter"><i id="bar"></i></div>
+    <div class="meta"><span id="conf"></span><span id="probs"></span></div>
+  </div>
+
+  <section class="models" id="models" hidden>
+    <h2>How the models scored</h2>
+    <table>
+      <thead><tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <p class="hint">Scores are on a held-out 20% of the data. Logistic Regression (gold) answers your checks.</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const msg = $("msg"), box = $("box");
+let scans = 0;
+try { scans = parseInt(localStorage.getItem("scans") || "0", 10) || 0; } catch (e) {}
+const showCount = () => $("count").textContent = scans + (scans === 1 ? " message checked" : " messages checked");
+showCount();
+
+function showError(t){ const e = $("err"); e.textContent = t; e.style.display = t ? "block" : "none"; }
+
+async function check(){
+  showError("");
+  if(!msg.value.trim()){ showError("Add some text first, or upload a .txt or .eml file."); return; }
+  const btn = $("check"); btn.disabled = true; btn.textContent = "Checking…";
+  try{
+    const r = await fetch("/api/predict", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:msg.value})});
+    if(!r.ok){ throw new Error((await r.json()).detail || "The server could not check this message."); }
+    const d = await r.json(); render(d);
+    scans++; try{ localStorage.setItem("scans", scans); }catch(e){} showCount();
+  }catch(e){
+    showError(e.message === "Failed to fetch" ? "Cannot reach the server. If this site is on Render's free plan, wait a minute for it to wake up and try again." : e.message);
+  }finally{ btn.disabled = false; btn.textContent = "Check message"; }
+}
+
+function render(d){
+  const spam = d.status === "SPAM", res = $("result");
+  res.className = "show " + (spam ? "spam" : "ham");
+  $("verdict").textContent = spam ? "This message looks like spam" : "This message looks safe";
+  $("explain").textContent = spam ? "Do not click links or reply with personal details." : "No spam patterns strong enough to flag it.";
+  $("conf").textContent = d.confidence + "% confident";
+  $("probs").textContent = "Spam " + d.probabilities.spam + "%  ·  Safe " + d.probabilities.ham + "%";
+  $("bar").style.width = "0"; requestAnimationFrame(() => requestAnimationFrame(() => $("bar").style.width = d.confidence + "%"));
+}
+
+function readFile(f){
+  if(!f) return;
+  if(!/\.(txt|eml)$/i.test(f.name)){ showError("Only .txt and .eml files are supported."); return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    let t = String(rd.result);
+    if(/\.eml$/i.test(f.name)){ const i = t.search(/\r?\n\r?\n/); if(i > -1) t = t.slice(i).trim(); } // drop headers
+    msg.value = t; showError("");
+  };
+  rd.readAsText(f);
+}
+$("file").addEventListener("change", e => readFile(e.target.files[0]));
+$("filelabel").addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); $("file").click(); } });
+["dragenter","dragover"].forEach(ev => box.addEventListener(ev, e => { e.preventDefault(); box.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => box.addEventListener(ev, e => { e.preventDefault(); box.classList.remove("drag"); }));
+box.addEventListener("drop", e => readFile(e.dataTransfer.files[0]));
+
+$("check").addEventListener("click", check);
+$("clear").addEventListener("click", () => { msg.value = ""; $("result").className = ""; showError(""); msg.focus(); });
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { msg.value = c.dataset.s; check(); }));
+
+fetch("/api/info").then(r => r.json()).then(d => {
+  $("trained").textContent = d.records ? "Trained on " + d.records.toLocaleString() + " messages" : "Model ready";
+  const names = Object.keys(d.models || {}); if(!names.length) return;
+  $("tbody").innerHTML = names.map(n => { const m = d.models[n], cls = n === "Logistic Regression" ? ' class="serve"' : "";
+    return `<tr><td${cls}>${n}</td><td${cls}>${m.accuracy}%</td><td${cls}>${m.precision}%</td><td${cls}>${m.recall}%</td><td${cls}>${m.f1}%</td></tr>`; }).join("");
+  $("models").hidden = false;
+}).catch(() => { $("trained").textContent = "Model ready"; });
+</script>
+</body>
+</html>
